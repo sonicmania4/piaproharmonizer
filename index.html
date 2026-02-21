@@ -887,17 +887,15 @@
         // ============================================================
 
         function cleanXmlString(raw) {
-            // 1. UTF-8 BOM 除去 (\uFEFF)
-            let s = raw.replace(/^\uFEFF/, '');
-            // 2. UTF-16 BOM 除去
-            s = s.replace(/^[\uFFFE\uFEFF]/, '');
-            // 3. XML宣言より前のゴミ文字を除去
-            const xmlDeclIdx = s.indexOf('<?xml');
-            if (xmlDeclIdx > 0) s = s.slice(xmlDeclIdx);
-            // XML宣言がない場合、最初の '<' を探す
-            if (!s.startsWith('<?') && !s.startsWith('<')) {
-                const firstAngle = s.indexOf('<');
-                if (firstAngle > 0) s = s.slice(firstAngle);
+            // 1. BOM 除去
+            let s = raw.replace(/^[\uFEFF\uFFFE]/, '');
+            // 2. 有効なXML先頭を探す:
+            //    <?xml ... や <tagName (英字・_で始まるタグ) または <!-- や <!DOCTYPE
+            //    ※ <@=> や <CLPSx のような独自ヘッダー(<@, <数字 etc)はスキップ
+            const validXmlRe = /<(?:\?xml|[a-zA-Z_]|!)/;
+            const match = validXmlRe.exec(s);
+            if (match && match.index > 0) {
+                s = s.slice(match.index);
             }
             return s.trim();
         }
@@ -1197,7 +1195,7 @@ ${noteElements}
                 showStatus('読み込み中…', 'info');
                 const text = await readFileAsText(file);
                 const data = parseVSQx(text);
-                parsedData = { ...data, fileName: file.name, rawXml: text };
+                parsedData = { ...data, fileName: file.name, rawXml: data.xmlString };
 
                 document.getElementById('fi-name').textContent = file.name;
                 document.getElementById('fi-meta').textContent =
