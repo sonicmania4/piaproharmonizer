@@ -79,6 +79,7 @@
             font-weight: 700;
             background: linear-gradient(90deg, #fff 40%, var(--accent2));
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
@@ -885,49 +886,100 @@
         //  VSQx Parser
         // ============================================================
 
-        function parseVSQx(xmlString) {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(xmlString, 'application/xml');
-            const err = doc.querySelector('parsererror');
-            if (err) throw new Error('XMLパースエラー: ' + err.textContent.slice(0, 200));
+        function cleanXmlString(raw) {
+            // 1. UTF-8 BOM 除去 (\uFEFF)
+            let s = raw.replace(/^\uFEFF/, '');
+            // 2. UTF-16 BOM 除去
+            s = s.replace(/^[\uFFFE\uFEFF]/, '');
+            // 3. XML宣言より前のゴミ文字を除去
+            const xmlDeclIdx = s.indexOf('<?xml');
+            if (xmlDeclIdx > 0) s = s.slice(xmlDeclIdx);
+            // XML宣言がない場合、最初の '<' を探す
+            if (!s.startsWith('<?') && !s.startsWith('<')) {
+                const firstAngle = s.indexOf('<');
+                if (firstAngle > 0) s = s.slice(firstAngle);
+            }
+            return s.trim();
+        }
 
-            // detect vsq3 or vsq4 namespace
+        function getAllNoteElements(doc) {
+            // まず通常のquerySelectorを試す
+            let els = Array.from(doc.querySelectorAll('note'));
+            if (els.length > 0) return els;
+
+            // 名前空間プレフィックスがある場合 (vsq3:note, vsq4:note 等)
+            const allEls = Array.from(doc.getElementsByTagName('*'));
+            els = allEls.filter(el => {
+                const local = el.localName || el.tagName;
+                return local.toLowerCase() === 'note';
+            });
+            return els;
+        }
+
+        function extractNoteValue(noteEl, ...tags) {
+            for (const tag of tags) {
+                // 通常のquerySelectorを試す
+                let el = noteEl.querySelector(tag);
+                if (!el) {
+                    // 名前空間プレフィックス対応
+                    const children = Array.from(noteEl.children);
+                    el = children.find(c => (c.localName || c.tagName).toLowerCase() === tag.toLowerCase());
+                }
+                if (el) return el.textContent.trim();
+                // 属性でも試す
+                const attr = noteEl.getAttribute(tag);
+                if (attr !== null) return attr;
+            }
+            return null;
+        }
+
+        function parseVSQx(xmlString) {
+            // XML文字列を前処理
+            const cleaned = cleanXmlString(xmlString);
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(cleaned, 'application/xml');
+            const err = doc.querySelector('parsererror');
+            if (err) {
+                // デバッグ用に先頭100文字を表示
+                const preview = cleaned.slice(0, 100).replace(/</g, '&lt;');
+                throw new Error(
+                    'XMLパースエラー。ファイルの形式が正しくない可能性があります。\n' +
+                    'ヒント: Piapro Studio から「ファイル → VSQxとしてエクスポート」してください。\n' +
+                    '先頭: ' + cleaned.slice(0, 80)
+                );
+            }
+
             const root = doc.documentElement;
             const ns = root.namespaceURI || '';
-            const isV4 = ns.includes('vocaloid4') || root.tagName.toLowerCase().includes('vsq4');
+            const isV4 = ns.includes('vocaloid4') || (root.localName || root.tagName).toLowerCase().includes('vsq4');
 
-            // Get all note elements
-            const noteEls = doc.querySelectorAll('note');
+            // ノート要素を取得（名前空間対応）
+            const noteEls = getAllNoteElements(doc);
             if (noteEls.length === 0) {
-                // try without namespace
-                const allTags = Array.from(doc.querySelectorAll('*')).filter(el =>
-                    el.tagName.toLowerCase() === 'note' ||
-                    el.tagName.toLowerCase() === 'vsq:note'
+                // デバッグ情報: 存在するタグ名を列挙
+                const tagNames = [...new Set(
+                    Array.from(doc.getElementsByTagName('*')).map(e => e.localName || e.tagName)
+                )].slice(0, 20).join(', ');
+                throw new Error(
+                    `ノートが見つかりません。\n検出されたタグ: ${tagNames}\n` +
+                    'VSQxファイルであることを確認してください。'
                 );
-                if (allTags.length === 0) throw new Error('ノートが見つかりません。VSQxファイルを確認してください。');
             }
 
             const notes = [];
             noteEls.forEach(n => {
-                const getText = (tag) => {
-                    const el = n.querySelector(tag);
-                    return el ? el.textContent.trim() : null;
-                };
-                const getAttr = (attr) => n.getAttribute(attr);
-
-                // VSQx3/4 uses child elements
-                let t = parseInt(getText('t') || getText('posTick') || getText('pos') || getAttr('t') || '0');
-                let dur = parseInt(getText('dur') || getText('durTick') || getText('duration') || getAttr('dur') || '480');
-                let num = parseInt(getText('n') || getText('noteNum') || getText('pitch') || getAttr('n') || '60');
-                let lyric = getText('y') || getText('lyric') || getText('text') || getAttr('y') || 'ら';
-                let phoneme = getText('p') || getText('phn') || getAttr('p') || null;
-
-                notes.push({ t, dur, num, lyric, phoneme });
+                const t = parseInt(extractNoteValue(n, 't', 'posTick', 'pos') ?? '0');
+                const dur = parseInt(extractNoteValue(n, 'dur', 'durTick', 'duration') ?? '480');
+                const num = parseInt(extractNoteValue(n, 'n', 'noteNum', 'pitch') ?? '60');
+                const lyric = extractNoteValue(n, 'y', 'lyric', 'text') ?? 'ら';
+                const phoneme = extractNoteValue(n, 'p', 'phn') ?? null;
+                if (!isNaN(num)) notes.push({ t, dur, num, lyric, phoneme });
             });
 
-            if (notes.length === 0) throw new Error('ノートデータが空です。');
+            if (notes.length === 0) throw new Error('ノートデータが空です。トラックにノートが入力されているか確認してください。');
             notes.sort((a, b) => a.t - b.t);
-            return { doc, notes, isV4, xmlString };
+            return { doc, notes, isV4, xmlString: cleaned };
         }
 
         // ============================================================
@@ -1037,19 +1089,38 @@ ${noteElements}
         // ============================================================
 
         async function readFileAsText(file) {
-            // Check if PPSF is a ZIP
             const buf = await file.arrayBuffer();
             const bytes = new Uint8Array(buf);
+
             // ZIP magic: PK (0x50 0x4B)
             if (bytes[0] === 0x50 && bytes[1] === 0x4B) {
-                // Try to load JSZip if available, otherwise warn
                 throw new Error(
                     'PPSF ファイルはバイナリ形式のため直接読み込めません。\n' +
                     'Piapro Studio から「ファイル → VSQxとしてエクスポート」して .vsqx ファイルを使用してください。'
                 );
             }
-            // Try as text (XML)
-            return new TextDecoder('utf-8').decode(bytes);
+
+            // UTF-16 LE BOM (FF FE)
+            if (bytes[0] === 0xFF && bytes[1] === 0xFE) {
+                return new TextDecoder('utf-16le').decode(bytes);
+            }
+            // UTF-16 BE BOM (FE FF)
+            if (bytes[0] === 0xFE && bytes[1] === 0xFF) {
+                return new TextDecoder('utf-16be').decode(bytes);
+            }
+
+            // UTF-8 (with or without BOM EF BB BF)
+            try {
+                const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+                return text;
+            } catch (_) {
+                // UTF-8 失敗 → Shift-JIS を試みる
+                try {
+                    return new TextDecoder('shift-jis').decode(bytes);
+                } catch (__) {
+                    return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+                }
+            }
         }
 
         // ============================================================
