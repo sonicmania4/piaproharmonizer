@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piapro Studio ハモリ生成ツール</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0e0f14;
+            --bg2: #14161f;
+            --bg3: #1c1f2e;
+            --bg4: #252840;
+            --border: #2e324a;
+            --accent: #7c6ff7;
+            --accent2: #a78bfa;
+            --accent-glow: rgba(124, 111, 247, 0.25);
+            --green: #34d399;
+            --red: #f87171;
+            --yellow: #fbbf24;
+            --text: #e2e4f0;
+            --text2: #8b8fa8;
+            --text3: #5a5e78;
+            --radius: 12px;
+            --radius-sm: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* ─── Header ─── */
+        header {
+            width: 100%;
+            padding: 18px 40px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg2);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo-icon {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 0 18px var(--accent-glow);
+            flex-shrink: 0;
+        }
+
+        header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #fff 40%, var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        header .sub {
+            font-size: 11px;
+            color: var(--text3);
+            margin-top: 1px;
+        }
+
+        .badge {
+            margin-left: auto;
+            font-size: 11px;
+            color: var(--accent2);
+            background: rgba(124, 111, 247, 0.12);
+            border: 1px solid rgba(124, 111, 247, 0.3);
+            border-radius: 20px;
+            padding: 3px 10px;
+        }
+
+        /* ─── Main Layout ─── */
+        main {
+            width: 100%;
+            max-width: 1100px;
+            padding: 32px 24px 60px;
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 24px;
+        }
+
+        @media (max-width: 800px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ─── Panel ─── */
+        .panel {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel-header h2 {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .panel-icon {
+            font-size: 16px;
+        }
+
+        .panel-body {
+            padding: 20px;
+        }
+
+        /* ─── Drop Zone ─── */
+        #dropzone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 48px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.25s;
+            background: var(--bg3);
+            position: relative;
+        }
+
+        #dropzone:hover,
+        #dropzone.dragover {
+            border-color: var(--accent);
+            background: rgba(124, 111, 247, 0.06);
+            box-shadow: 0 0 24px var(--accent-glow);
+        }
+
+        #dropzone input {
+            display: none;
+        }
+
+        .dz-icon {
+            font-size: 40px;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .dz-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .dz-sub {
+            font-size: 12px;
+            color: var(--text3);
+        }
+
+        .dz-formats {
+            margin-top: 12px;
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .dz-format-tag {
+            font-size: 11px;
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg4);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 2px 8px;
+            color: var(--accent2);
+        }
+
+        /* ─── File Info ─── */
+        #file-info {
+            display: none;
+            margin-top: 16px;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            gap: 12px;
+            align-items: center;
+        }
+
+        #file-info.show {
+            display: flex;
+        }
+
+        .fi-icon {
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+
+        .fi-name {
+            font-size: 13px;
+            font-weight: 600;
+            word-break: break-all;
+        }
+
+        .fi-meta {
+            font-size: 11px;
+            color: var(--text3);
+            margin-top: 2px;
+        }
+
+        .fi-clear {
+            margin-left: auto;
+            cursor: pointer;
+            font-size: 18px;
+            color: var(--text3);
+            flex-shrink: 0;
+            transition: color 0.2s;
+        }
+
+        .fi-clear:hover {
+            color: var(--red);
+        }
+
+        /* ─── Note Preview ─── */
+        #preview-section {
+            margin-top: 20px;
+            display: none;
+        }
+
+        #preview-section.show {
+            display: block;
+        }
+
+        .preview-label {
+            font-size: 12px;
+            color: var(--text3);
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        #note-list {
+            max-height: 240px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg);
+        }
+
+        #note-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #note-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #note-list::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .note-row {
+            display: grid;
+            grid-template-columns: 60px 70px 1fr 70px;
+            gap: 8px;
+            padding: 7px 14px;
+            font-size: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            align-items: center;
+            transition: background 0.15s;
+        }
+
+        .note-row:hover {
+            background: var(--bg3);
+        }
+
+        .note-row.header {
+            background: var(--bg3);
+            color: var(--text3);
+            font-weight: 600;
+            font-size: 11px;
+            position: sticky;
+            top: 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .note-pitch {
+            color: var(--accent2);
+            font-weight: 600;
+        }
+
+        .note-lyric {
+            color: var(--text);
+        }
+
+        .note-tick {
+            color: var(--text3);
+            font-size: 11px;
+        }
+
+        .note-harmony {
+            color: var(--green);
+            font-weight: 600;
+        }
+
+        /* ─── Settings Panel ─── */
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-label {
+            font-size: 12px;
+            color: var(--text3);
+            font-weight: 500;
+            letter-spacing: 0.04em;
+            display: block;
+            margin-bottom: 7px;
+        }
+
+        select,
+        input[type="number"] {
+            width: 100%;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            padding: 9px 12px;
+            font-size: 13px;
+            font-family: inherit;
+            appearance: none;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+
+        select:focus,
+        input[type="number"]:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .select-wrap {
+            position: relative;
+        }
+
+        .select-wrap::after {
+            content: '▾';
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text3);
+            pointer-events: none;
+        }
+
+        /* Direction Toggle */
+        .direction-toggle {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .dir-btn {
+            padding: 9px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg3);
+            color: var(--text2);
+            font-size: 13px;
+            font-family: inherit;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .dir-btn:hover {
+            border-color: var(--accent);
+            color: var(--text);
+        }
+
+        .dir-btn.active {
+            border-color: var(--accent);
+            background: rgba(124, 111, 247, 0.15);
+            color: var(--accent2);
+            font-weight: 600;
+        }
+
+        /* Toggle Switch */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+
+        .toggle-label {
+            font-size: 13px;
+            color: var(--text2);
+        }
+
+        .toggle-sub {
+            font-size: 11px;
+            color: var(--text3);
+            margin-top: 1px;
+        }
+
+        .switch {
+            position: relative;
+            width: 40px;
+            height: 22px;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        .switch input {
+            display: none;
+        }
+
+        .switch-track {
+            position: absolute;
+            inset: 0;
+            background: var(--bg4);
+            border-radius: 11px;
+            transition: background 0.2s;
+        }
+
+        .switch input:checked+.switch-track {
+            background: var(--accent);
+        }
+
+        .switch-thumb {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 16px;
+            height: 16px;
+            background: #fff;
+            border-radius: 50%;
+            transition: transform 0.2s;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+        }
+
+        .switch input:checked~.switch-thumb {
+            transform: translateX(18px);
+        }
+
+        /* Interval presets */
+        .interval-presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .preset-btn {
+            padding: 5px 12px;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            background: var(--bg3);
+            color: var(--text3);
+            font-size: 12px;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .preset-btn:hover {
+            border-color: var(--accent);
+            color: var(--text);
+        }
+
+        .preset-btn.active {
+            border-color: var(--accent);
+            background: rgba(124, 111, 247, 0.15);
+            color: var(--accent2);
+        }
+
+        /* ─── Generate Button ─── */
+        #generate-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: linear-gradient(135deg, var(--accent), #9f7aea);
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(124, 111, 247, 0.4);
+            transition: all 0.25s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        #generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 28px rgba(124, 111, 247, 0.55);
+        }
+
+        #generate-btn:active {
+            transform: translateY(0);
+        }
+
+        #generate-btn:disabled {
+            background: var(--bg4);
+            color: var(--text3);
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* ─── Status / Messages ─── */
+        #status {
+            margin-top: 12px;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #status.show {
+            display: flex;
+        }
+
+        #status.success {
+            background: rgba(52, 211, 153, 0.1);
+            border: 1px solid rgba(52, 211, 153, 0.3);
+            color: var(--green);
+        }
+
+        #status.error {
+            background: rgba(248, 113, 113, 0.1);
+            border: 1px solid rgba(248, 113, 113, 0.3);
+            color: var(--red);
+        }
+
+        #status.info {
+            background: rgba(124, 111, 247, 0.1);
+            border: 1px solid rgba(124, 111, 247, 0.3);
+            color: var(--accent2);
+        }
+
+        /* ─── Info Box ─── */
+        .info-box {
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            font-size: 12px;
+            color: var(--text3);
+            line-height: 1.7;
+            margin-top: 16px;
+        }
+
+        .info-box strong {
+            color: var(--text2);
+        }
+
+        /* ─── Custom Range ─── */
+        #custom-semitones-group {
+            display: none;
+        }
+
+        #custom-semitones-group.show {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="logo-icon">🎵</div>
+        <div>
+            <h1>Piapro Studio ハモリ生成ツール</h1>
+            <div class="sub">VSQx / PPSF ファイルからハモリパートを自動生成</div>
+        </div>
+        <span class="badge">v1.0</span>
+    </header>
+
+    <main>
+        <!-- Left Column -->
+        <div>
+            <!-- Drop Zone -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-icon">📂</span>
+                    <h2>ファイル読み込み</h2>
+                </div>
+                <div class="panel-body">
+                    <div id="dropzone">
+                        <input type="file" id="file-input" accept=".vsqx,.ppsf,.xml">
+                        <span class="dz-icon">🎼</span>
+                        <div class="dz-title">ファイルをドロップ または クリックして選択</div>
+                        <div class="dz-sub">Piapro Studio からエクスポートしたファイルを使用してください</div>
+                        <div class="dz-formats">
+                            <span class="dz-format-tag">.vsqx</span>
+                            <span class="dz-format-tag">.ppsf</span>
+                            <span class="dz-format-tag">.xml</span>
+                        </div>
+                    </div>
+
+                    <div id="file-info">
+                        <span class="fi-icon">🎵</span>
+                        <div>
+                            <div class="fi-name" id="fi-name">—</div>
+                            <div class="fi-meta" id="fi-meta">—</div>
+                        </div>
+                        <span class="fi-clear" id="fi-clear" title="クリア">✕</span>
+                    </div>
+
+                    <div id="preview-section">
+                        <div class="preview-label">📋 メロディノート一覧（読み込み結果）</div>
+                        <div id="note-list">
+                            <div class="note-row header">
+                                <span>音名</span>
+                                <span>MIDI#</span>
+                                <span>歌詞</span>
+                                <span>ハモリ</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="status"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Settings -->
+        <div style="display:flex;flex-direction:column;gap:20px;">
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-icon">🎹</span>
+                    <h2>ハモリ設定</h2>
+                </div>
+                <div class="panel-body">
+
+                    <div class="form-group">
+                        <label class="form-label">🎸 キー (Key)</label>
+                        <div class="select-wrap">
+                            <select id="sel-key">
+                                <option value="0">C</option>
+                                <option value="1">C# / D♭</option>
+                                <option value="2">D</option>
+                                <option value="3">D# / E♭</option>
+                                <option value="4">E</option>
+                                <option value="5">F</option>
+                                <option value="6">F# / G♭</option>
+                                <option value="7">G</option>
+                                <option value="8">G# / A♭</option>
+                                <option value="9">A</option>
+                                <option value="10">A# / B♭</option>
+                                <option value="11">B</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">🎼 スケール (Scale)</label>
+                        <div class="select-wrap">
+                            <select id="sel-scale">
+                                <option value="major">メジャー (Major)</option>
+                                <option value="natural_minor">ナチュラルマイナー</option>
+                                <option value="harmonic_minor">ハーモニックマイナー</option>
+                                <option value="melodic_minor">メロディックマイナー</option>
+                                <option value="pentatonic_major">ペンタトニックメジャー</option>
+                                <option value="pentatonic_minor">ペンタトニックマイナー</option>
+                                <option value="chromatic">クロマチック（補正なし）</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">↕ 方向</label>
+                        <div class="direction-toggle">
+                            <button class="dir-btn active" data-dir="1" id="dir-up">▲ 上ハモリ</button>
+                            <button class="dir-btn" data-dir="-1" id="dir-down">▼ 下ハモリ</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">🎵 音程 (Interval)</label>
+                        <div class="interval-presets">
+                            <button class="preset-btn" data-semitones="3" data-label="短3度">短3度</button>
+                            <button class="preset-btn active" data-semitones="4" data-label="長3度">長3度</button>
+                            <button class="preset-btn" data-semitones="5" data-label="4度">完全4度</button>
+                            <button class="preset-btn" data-semitones="7" data-label="5度">完全5度</button>
+                            <button class="preset-btn" data-semitones="8" data-label="短6度">短6度</button>
+                            <button class="preset-btn" data-semitones="9" data-label="長6度">長6度</button>
+                            <button class="preset-btn" data-semitones="0" data-label="カスタム">カスタム…</button>
+                        </div>
+                        <div id="custom-semitones-group" style="margin-top:10px;">
+                            <input type="number" id="custom-semitones" min="1" max="12" value="3"
+                                placeholder="半音数（1〜24）">
+                        </div>
+                    </div>
+
+                    <div class="toggle-row">
+                        <div>
+                            <div class="toggle-label">スケール補正</div>
+                            <div class="toggle-sub">スケール外の音を最近音に補正</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-scale-correction" checked>
+                            <span class="switch-track"></span>
+                            <span class="switch-thumb"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-row">
+                        <div>
+                            <div class="toggle-label">スケール度数ベース</div>
+                            <div class="toggle-sub">固定半音ではなく音階上の度数で計算</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-degree-mode" checked>
+                            <span class="switch-track"></span>
+                            <span class="switch-thumb"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-row">
+                        <div>
+                            <div class="toggle-label">歌詞をコピー</div>
+                            <div class="toggle-sub">ハモリにも同じ歌詞を使用</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-copy-lyrics" checked>
+                            <span class="switch-track"></span>
+                            <span class="switch-thumb"></span>
+                        </label>
+                    </div>
+
+                    <button id="generate-btn" disabled>
+                        <span>🎶</span> ハモリを生成してダウンロード
+                    </button>
+
+                    <div class="info-box">
+                        💡 <strong>使い方:</strong> Piapro Studio でメインボーカルトラックを<br>
+                        「ファイル → VSQxとしてエクスポート」し、上でファイルを選択してください。<br>
+                        生成した .vsqx を再インポートするとハモリトラックが追加されます。
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ============================================================
+        //  Music Theory Utilities
+        // ============================================================
+
+        const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        const NOTE_NAMES_FLAT = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+
+        // Scale intervals (semitones from root)
+        const SCALES = {
+            major: [0, 2, 4, 5, 7, 9, 11],
+            natural_minor: [0, 2, 3, 5, 7, 8, 10],
+            harmonic_minor: [0, 2, 3, 5, 7, 8, 11],
+            melodic_minor: [0, 2, 3, 5, 7, 9, 11],
+            pentatonic_major: [0, 2, 4, 7, 9],
+            pentatonic_minor: [0, 3, 5, 7, 10],
+            chromatic: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+        };
+
+        function midiToNoteName(midi) {
+            const octave = Math.floor(midi / 12) - 1;
+            const note = NOTE_NAMES[midi % 12];
+            return `${note}${octave}`;
+        }
+
+        // Get scale notes for a given key (root semitone 0-11)
+        function getScaleNotes(keyRoot, scaleName) {
+            const intervals = SCALES[scaleName] || SCALES.major;
+            const notes = new Set();
+            for (let oct = 0; oct < 11; oct++) {
+                for (const iv of intervals) {
+                    const n = keyRoot + iv + oct * 12;
+                    if (n >= 0 && n < 128) notes.add(n);
+                }
+            }
+            return notes;
+        }
+
+        // Snap a MIDI note to the nearest scale note
+        function snapToScale(midi, keyRoot, scaleName) {
+            const intervals = SCALES[scaleName] || SCALES.major;
+            if (scaleName === 'chromatic') return midi;
+            const pc = ((midi - keyRoot) % 12 + 12) % 12;
+            if (intervals.includes(pc)) return midi;
+            // find nearest
+            let best = null, bestDist = 99;
+            for (const iv of intervals) {
+                let d = Math.min(Math.abs(iv - pc), 12 - Math.abs(iv - pc));
+                if (d < bestDist) { bestDist = d; best = iv; }
+            }
+            const octBase = midi - pc + keyRoot % 12;
+            // try upward and downward snaps
+            const candidates = [octBase + best, octBase + best - 12, octBase + best + 12];
+            let closest = null; let closestDist = 99;
+            for (const c of candidates) {
+                if (c < 0 || c > 127) continue;
+                const d = Math.abs(c - midi);
+                if (d < closestDist) { closestDist = d; closest = c; }
+            }
+            return closest !== null ? closest : midi;
+        }
+
+        // Degree-based harmony: move n degrees within the scale
+        function harmonyByDegree(midi, degrees, direction, keyRoot, scaleName) {
+            const intervals = SCALES[scaleName] || SCALES.major;
+            const len = intervals.length;
+            // Find position in scale across all octaves
+            const pc = ((midi - keyRoot) % 12 + 12) % 12;
+            const midiOctave = Math.floor((midi - keyRoot) / 12);
+            const scaleIdx = intervals.indexOf(pc);
+
+            let harmonyMidi;
+            if (scaleIdx === -1) {
+                // Note not in scale: fallback to semitone shift then snap
+                harmonyMidi = midi + direction * getDefaultSemitones(degrees, scaleName);
+                harmonyMidi = snapToScale(harmonyMidi, keyRoot, scaleName);
+            } else {
+                const newIdx = scaleIdx + direction * (degrees - 1);
+                const octShift = Math.floor(newIdx / len);
+                const idx = ((newIdx % len) + len) % len;
+                harmonyMidi = keyRoot + midiOctave * 12 + octShift * 12 + intervals[idx];
+            }
+            return Math.max(0, Math.min(127, harmonyMidi));
+        }
+
+        function getDefaultSemitones(degreeCount, scaleName) {
+            // approximate semitones for common degree counts
+            const map = { 2: 2, 3: 4, 4: 5, 5: 7, 6: 9, 7: 11, 8: 12 };
+            return map[degreeCount] || (degreeCount - 1) * 2;
+        }
+
+        // Convert semitone interval to approximate degree count
+        function semitonesToDegrees(semitones, scaleName) {
+            const intervals = SCALES[scaleName] || SCALES.major;
+            // find degree count that is closest to semitone count
+            for (let d = 2; d <= 8; d++) {
+                const idx = d - 1;
+                if (idx < intervals.length && intervals[idx] >= semitones) return d;
+            }
+            return Math.round(semitones / 12 * (intervals.length)) + 1;
+        }
+
+        // ============================================================
+        //  VSQx Parser
+        // ============================================================
+
+        function parseVSQx(xmlString) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(xmlString, 'application/xml');
+            const err = doc.querySelector('parsererror');
+            if (err) throw new Error('XMLパースエラー: ' + err.textContent.slice(0, 200));
+
+            // detect vsq3 or vsq4 namespace
+            const root = doc.documentElement;
+            const ns = root.namespaceURI || '';
+            const isV4 = ns.includes('vocaloid4') || root.tagName.toLowerCase().includes('vsq4');
+
+            // Get all note elements
+            const noteEls = doc.querySelectorAll('note');
+            if (noteEls.length === 0) {
+                // try without namespace
+                const allTags = Array.from(doc.querySelectorAll('*')).filter(el =>
+                    el.tagName.toLowerCase() === 'note' ||
+                    el.tagName.toLowerCase() === 'vsq:note'
+                );
+                if (allTags.length === 0) throw new Error('ノートが見つかりません。VSQxファイルを確認してください。');
+            }
+
+            const notes = [];
+            noteEls.forEach(n => {
+                const getText = (tag) => {
+                    const el = n.querySelector(tag);
+                    return el ? el.textContent.trim() : null;
+                };
+                const getAttr = (attr) => n.getAttribute(attr);
+
+                // VSQx3/4 uses child elements
+                let t = parseInt(getText('t') || getText('posTick') || getText('pos') || getAttr('t') || '0');
+                let dur = parseInt(getText('dur') || getText('durTick') || getText('duration') || getAttr('dur') || '480');
+                let num = parseInt(getText('n') || getText('noteNum') || getText('pitch') || getAttr('n') || '60');
+                let lyric = getText('y') || getText('lyric') || getText('text') || getAttr('y') || 'ら';
+                let phoneme = getText('p') || getText('phn') || getAttr('p') || null;
+
+                notes.push({ t, dur, num, lyric, phoneme });
+            });
+
+            if (notes.length === 0) throw new Error('ノートデータが空です。');
+            notes.sort((a, b) => a.t - b.t);
+            return { doc, notes, isV4, xmlString };
+        }
+
+        // ============================================================
+        //  Harmony Generator
+        // ============================================================
+
+        function generateHarmony(notes, settings) {
+            const { keyRoot, scaleName, direction, semitones, degreeMode, scaleCorrection } = settings;
+            return notes.map(note => {
+                let harmonyNum;
+                if (scaleName === 'chromatic' || !degreeMode) {
+                    // Fixed semitone shift
+                    harmonyNum = note.num + direction * semitones;
+                    if (scaleCorrection && scaleName !== 'chromatic') {
+                        harmonyNum = snapToScale(harmonyNum, keyRoot, scaleName);
+                    }
+                } else {
+                    // Degree-based
+                    const degrees = semitonesToDegrees(semitones, scaleName) || 3;
+                    harmonyNum = harmonyByDegree(note.num, degrees, direction, keyRoot, scaleName);
+                }
+                harmonyNum = Math.max(0, Math.min(127, harmonyNum));
+                return { ...note, num: harmonyNum };
+            });
+        }
+
+        // ============================================================
+        //  VSQx Writer — inject harmony as a new vsTrack
+        // ============================================================
+
+        function buildHarmonyVSQx(originalXml, harmonyNotes, copyLyrics) {
+            // Parse and clone
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(originalXml, 'application/xml');
+
+            // Find first vsPart or vsTrack to clone structure
+            const firstPart = doc.querySelector('vsPart') || doc.querySelector('vsTrack');
+            let newTrackXml;
+
+            if (firstPart) {
+                // Clone the first track element
+                const firstTrackEl = firstPart.closest('vsTrack') || firstPart.parentElement;
+
+                // Build note elements
+                const noteElements = harmonyNotes.map(n => {
+                    const lyricEl = copyLyrics
+                        ? `<y>${escapeXml(n.lyric)}</y>${n.phoneme ? `<p>${escapeXml(n.phoneme)}</p>` : ''}`
+                        : `<y>ら</y>`;
+                    return `        <note><t>${n.t}</t><dur>${n.dur}</dur><n>${n.num}</n>${lyricEl}</note>`;
+                }).join('\n');
+
+                // Build a minimal new vsTrack
+                const serializer = new XMLSerializer();
+                const origTrack = serializer.serializeToString(firstTrackEl || firstPart);
+                // Replace notes block
+                const partTag = firstPart.tagName;
+                newTrackXml = `
+  <vsTrack>
+    <tNo>1</tNo>
+    <name>Harmony</name>
+    <${partTag}>
+      <t>0</t>
+      <s>Harmony</s>
+${noteElements}
+    </${partTag}>
+  </vsTrack>`;
+            } else {
+                // Fallback: minimal track
+                const noteElements = harmonyNotes.map(n => {
+                    const lyricEl = copyLyrics ? `<y>${escapeXml(n.lyric)}</y>` : `<y>ら</y>`;
+                    return `    <note><t>${n.t}</t><dur>${n.dur}</dur><n>${n.num}</n>${lyricEl}</note>`;
+                }).join('\n');
+                newTrackXml = `
+  <vsTrack>
+    <tNo>1</tNo>
+    <name>Harmony</name>
+    <vsPart>
+      <t>0</t><s>Harmony</s>
+${noteElements}
+    </vsPart>
+  </vsTrack>`;
+            }
+
+            // Insert before closing root tag
+            const rootTagClose = `</${doc.documentElement.tagName}>`;
+            const serializer = new XMLSerializer();
+            let output = serializer.serializeToString(doc);
+            const insertAt = output.lastIndexOf(rootTagClose);
+            if (insertAt !== -1) {
+                output = output.slice(0, insertAt) + newTrackXml + '\n' + output.slice(insertAt);
+            } else {
+                output += newTrackXml;
+            }
+            return output;
+        }
+
+        function escapeXml(s) {
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        // ============================================================
+        //  PPSF Handler (try ZIP → XML or raw XML)
+        // ============================================================
+
+        async function readFileAsText(file) {
+            // Check if PPSF is a ZIP
+            const buf = await file.arrayBuffer();
+            const bytes = new Uint8Array(buf);
+            // ZIP magic: PK (0x50 0x4B)
+            if (bytes[0] === 0x50 && bytes[1] === 0x4B) {
+                // Try to load JSZip if available, otherwise warn
+                throw new Error(
+                    'PPSF ファイルはバイナリ形式のため直接読み込めません。\n' +
+                    'Piapro Studio から「ファイル → VSQxとしてエクスポート」して .vsqx ファイルを使用してください。'
+                );
+            }
+            // Try as text (XML)
+            return new TextDecoder('utf-8').decode(bytes);
+        }
+
+        // ============================================================
+        //  UI State
+        // ============================================================
+
+        let parsedData = null;
+        let harmonyNotes = null;
+        let direction = 1;      // +1 = up, -1 = down
+        let semitones = 4;      // default major 3rd
+        let useCustom = false;
+
+        function showStatus(msg, type = 'info') {
+            const el = document.getElementById('status');
+            el.textContent = '';
+            const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+            el.innerHTML = `<span>${icon}</span> ${msg}`;
+            el.className = `show ${type}`;
+        }
+        function hideStatus() {
+            document.getElementById('status').className = '';
+        }
+
+        function renderNoteList(notes, harmonyNotes) {
+            const list = document.getElementById('note-list');
+            // keep header
+            const headerHtml = `<div class="note-row header"><span>音名</span><span>MIDI#</span><span>歌詞</span><span>ハモリ</span></div>`;
+            let rows = '';
+            const MAX = 200;
+            const slice = notes.slice(0, MAX);
+            slice.forEach((n, i) => {
+                const hn = harmonyNotes ? harmonyNotes[i] : null;
+                rows += `<div class="note-row">
+      <span class="note-pitch">${midiToNoteName(n.num)}</span>
+      <span class="note-tick">${n.num}</span>
+      <span class="note-lyric">${escapeHtml(n.lyric)}</span>
+      <span class="note-harmony">${hn ? midiToNoteName(hn.num) : '—'}</span>
+    </div>`;
+            });
+            if (notes.length > MAX) rows += `<div class="note-row"><span style="color:var(--text3);font-size:11px;grid-column:span 4">…他 ${notes.length - MAX} ノート</span></div>`;
+            list.innerHTML = headerHtml + rows;
+        }
+
+        function escapeHtml(s) {
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function getCurrentSettings() {
+            const keyRoot = parseInt(document.getElementById('sel-key').value);
+            const scaleName = document.getElementById('sel-scale').value;
+            const scaleCorrection = document.getElementById('toggle-scale-correction').checked;
+            const degreeMode = document.getElementById('toggle-degree-mode').checked;
+            const copyLyrics = document.getElementById('toggle-copy-lyrics').checked;
+            const customSemi = parseInt(document.getElementById('custom-semitones').value) || 3;
+            const effectiveSemitones = useCustom ? customSemi : semitones;
+            return { keyRoot, scaleName, direction, semitones: effectiveSemitones, scaleCorrection, degreeMode, copyLyrics };
+        }
+
+        function refreshHarmony() {
+            if (!parsedData) return;
+            const settings = getCurrentSettings();
+            harmonyNotes = generateHarmony(parsedData.notes, settings);
+            renderNoteList(parsedData.notes, harmonyNotes);
+        }
+
+        function updateGenerateBtn() {
+            document.getElementById('generate-btn').disabled = !parsedData;
+        }
+
+        // ─── File Load ───
+        async function loadFile(file) {
+            hideStatus();
+            try {
+                showStatus('読み込み中…', 'info');
+                const text = await readFileAsText(file);
+                const data = parseVSQx(text);
+                parsedData = { ...data, fileName: file.name, rawXml: text };
+
+                document.getElementById('fi-name').textContent = file.name;
+                document.getElementById('fi-meta').textContent =
+                    `${data.notes.length} ノート検出 | ${(file.size / 1024).toFixed(1)} KB`;
+                document.getElementById('file-info').classList.add('show');
+                document.getElementById('preview-section').classList.add('show');
+                updateGenerateBtn();
+                refreshHarmony();
+                showStatus(`${data.notes.length} ノートを読み込みました！`, 'success');
+            } catch (e) {
+                showStatus(e.message, 'error');
+                parsedData = null;
+                updateGenerateBtn();
+            }
+        }
+
+        function clearFile() {
+            parsedData = null; harmonyNotes = null;
+            document.getElementById('file-info').classList.remove('show');
+            document.getElementById('preview-section').classList.remove('show');
+            document.getElementById('file-input').value = '';
+            hideStatus();
+            updateGenerateBtn();
+            document.getElementById('note-list').innerHTML =
+                `<div class="note-row header"><span>音名</span><span>MIDI#</span><span>歌詞</span><span>ハモリ</span></div>`;
+        }
+
+        // ─── Generate & Download ───
+        function generate() {
+            if (!parsedData) return;
+            try {
+                const settings = getCurrentSettings();
+                harmonyNotes = generateHarmony(parsedData.notes, settings);
+                const outputXml = buildHarmonyVSQx(parsedData.rawXml, harmonyNotes, settings.copyLyrics);
+
+                // Download
+                const blob = new Blob([outputXml], { type: 'application/xml' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                const baseName = parsedData.fileName.replace(/\.[^.]+$/, '');
+                a.href = url; a.download = `harmony_${baseName}.vsqx`;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                renderNoteList(parsedData.notes, harmonyNotes);
+                showStatus('ハモリ VSQx を生成しました！ Piapro Studio にインポートしてください。', 'success');
+            } catch (e) {
+                showStatus('生成エラー: ' + e.message, 'error');
+            }
+        }
+
+        // ============================================================
+        //  Event Listeners
+        // ============================================================
+
+        // Dropzone
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('file-input');
+
+        dropzone.addEventListener('click', () => fileInput.click());
+        dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+        dropzone.addEventListener('drop', e => {
+            e.preventDefault(); dropzone.classList.remove('dragover');
+            const f = e.dataTransfer.files[0];
+            if (f) loadFile(f);
+        });
+        fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
+        document.getElementById('fi-clear').addEventListener('click', clearFile);
+
+        // Direction buttons
+        document.querySelectorAll('.dir-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.dir-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                direction = parseInt(btn.dataset.dir);
+                refreshHarmony();
+            });
+        });
+
+        // Interval presets
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const s = parseInt(btn.dataset.semitones);
+                const customGroup = document.getElementById('custom-semitones-group');
+                if (s === 0) {
+                    useCustom = true;
+                    customGroup.classList.add('show');
+                } else {
+                    useCustom = false;
+                    semitones = s;
+                    customGroup.classList.remove('show');
+                    refreshHarmony();
+                }
+            });
+        });
+
+        document.getElementById('custom-semitones').addEventListener('input', () => {
+            if (useCustom) refreshHarmony();
+        });
+
+        // Selects & toggles trigger refresh
+        ['sel-key', 'sel-scale'].forEach(id => {
+            document.getElementById(id).addEventListener('change', refreshHarmony);
+        });
+        ['toggle-scale-correction', 'toggle-degree-mode', 'toggle-copy-lyrics'].forEach(id => {
+            document.getElementById(id).addEventListener('change', refreshHarmony);
+        });
+
+        // Generate button
+        document.getElementById('generate-btn').addEventListener('click', generate);
+
+        // ============================================================
+        //  Built-in Tests (accessible via runTests() in console)
+        // ============================================================
+        window.runTests = function () {
+            const results = [];
+            function assert(name, got, expected) {
+                const ok = got === expected;
+                results.push({ name, ok, got, expected });
+                console.log(`${ok ? '✅' : '❌'} ${name}: got ${got}, expected ${expected}`);
+            }
+
+            // Snap to C major
+            assert('SnapToScale C#+C major → C', snapToScale(1, 0, 'major'), 0);   // C# → C
+            assert('SnapToScale F#+C major → G', snapToScale(6, 0, 'major'), 7);   // F# → G
+            assert('SnapToScale A on A major → A', snapToScale(9, 9, 'major'), 9);
+
+            // Harmony degree mode
+            const settings = { keyRoot: 0, scaleName: 'major', direction: 1, semitones: 4, scaleCorrection: true, degreeMode: true };
+            const noteC = { t: 0, dur: 480, num: 60, lyric: 'ど' }; // C4
+            const noteD = { t: 480, dur: 480, num: 62, lyric: 'れ' }; // D4
+            const [hC, hD] = generateHarmony([noteC, noteD], settings);
+            assert('Harmony C major 3rd up from C4 = E4', hC.num, 64);
+            assert('Harmony C major 3rd up from D4 = F4', hD.num, 65);
+
+            const passed = results.filter(r => r.ok).length;
+            console.log(`\n${passed}/${results.length} テスト通過`);
+            return results;
+        };
+    </script>
+</body>
+
+</html>
